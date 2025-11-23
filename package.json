@@ -8,6 +8,7 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
+    "vercel-build": "npm run build && npm run db:generate",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -41,6 +42,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "exceljs": "^4.4.0",
+    "express": "^5.1.0",
     "json2csv": "^6.0.0-alpha.2",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",

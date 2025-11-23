@@ -1,0 +1,14 @@
+node_modules
+dist
+coverage
+test
+*.log
+.env
+.env.local
+.DS_Store
+*.md
+scripts
+prisma/migrations
+prisma/seed.ts
+prisma/medicine-data.ts
+

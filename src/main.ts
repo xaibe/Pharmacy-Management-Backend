@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS with specific configuration
-  // Allow all localhost ports for development
+  // Allow all localhost ports for development and Vercel deployments
   const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
@@ -16,7 +16,9 @@ async function bootstrap() {
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:3002',
-  ];
+    process.env.FRONTEND_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ].filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -27,8 +29,8 @@ async function bootstrap() {
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        // For development, allow any localhost origin
-        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        // For development, allow any localhost origin or Vercel deployments
+        if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('vercel.app')) {
           callback(null, true);
         } else {
           callback(new Error('Not allowed by CORS'));
