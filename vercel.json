@@ -17,14 +17,5 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": [
-        "dist/**",
-        "prisma/schema.prisma",
-        "node_modules/.prisma/**"
-      ]
-    }
   }
 }
