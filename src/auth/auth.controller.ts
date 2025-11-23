@@ -1,7 +1,7 @@
 import { Body, Controller, Patch, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ForgetPasswordDto } from 'src/passwords/dto/forget-password.dto';
-import { UpdatePasswordDto } from 'src/passwords/dto/update-password.dto';
+import { ForgetPasswordDto } from '../passwords/dto/forget-password.dto';
+import { UpdatePasswordDto } from '../passwords/dto/update-password.dto';
 import { AuthService } from './auth.service';
 import { Public } from './constants';
 import { LoginUserDto } from './dto/login-user.dto';

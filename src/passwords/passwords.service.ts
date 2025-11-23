@@ -2,9 +2,9 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { User } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { EmailValidationsService } from 'src/email-validations/email-validations.service';
-import { EmailsService } from 'src/emails/emails.service';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { EmailValidationsService } from '../email-validations/email-validations.service';
+import { EmailsService } from '../emails/emails.service';
+import { PrismaService } from '../prisma/prisma.service';
 @Injectable()
 export class PasswordsService {
   constructor(

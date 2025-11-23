@@ -5,10 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { EmailValidationsService } from 'src/email-validations/email-validations.service';
-import { PasswordsService } from 'src/passwords/passwords.service';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { UsersService } from 'src/users/users.service';
+import { EmailValidationsService } from '../email-validations/email-validations.service';
+import { PasswordsService } from '../passwords/passwords.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AuthService {
