@@ -64,36 +64,42 @@ async function bootstrap() {
       // Global exception filter
       app.useGlobalFilters(new HttpExceptionFilter());
 
-      // Swagger configuration
-      const config = new DocumentBuilder()
-        .setTitle('Pharmacy Management System API')
-        .setDescription('The Pharmacy Management System API documentation')
-        .setVersion('1.0')
-        .addBearerAuth(
-          {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
-            name: 'JWT',
-            description: 'Enter JWT token',
-            in: 'header',
+      // Swagger configuration - disable in production serverless to avoid static asset issues
+      // Set ENABLE_SWAGGER=true in Vercel environment variables if you want to enable it
+      if (process.env.ENABLE_SWAGGER === 'true') {
+        const config = new DocumentBuilder()
+          .setTitle('Pharmacy Management System API')
+          .setDescription('The Pharmacy Management System API documentation')
+          .setVersion('1.0')
+          .addBearerAuth(
+            {
+              type: 'http',
+              scheme: 'bearer',
+              bearerFormat: 'JWT',
+              name: 'JWT',
+              description: 'Enter JWT token',
+              in: 'header',
+            },
+            'JWT-auth',
+          )
+          .build();
+
+        const document = SwaggerModule.createDocument(app, config);
+
+        // Swagger setup - note: static assets may not work in serverless
+        // Consider using a separate Swagger UI deployment or disable in production
+        SwaggerModule.setup('api', app, document, {
+          customCss: '.swagger-ui .topbar { display: none }',
+          customSiteTitle: 'Pharmacy Management System API Documentation',
+          swaggerOptions: {
+            docExpansion: 'list',
+            filter: true,
+            showRequestHeaders: true,
           },
-          'JWT-auth',
-        )
-        .build();
-
-      const document = SwaggerModule.createDocument(app, config);
-
-      // Custom Swagger setup for serverless environment
-      SwaggerModule.setup('api', app, document, {
-        customCss: '.swagger-ui .topbar { display: none }',
-        customSiteTitle: 'Pharmacy Management System API Documentation',
-        swaggerOptions: {
-          docExpansion: 'list',
-          filter: true,
-          showRequestHeaders: true,
-        },
-      });
+        });
+      } else {
+        console.log('Swagger UI is disabled. Set ENABLE_SWAGGER=true to enable.');
+      }
 
       await app.init();
       console.log('NestJS application initialized successfully');
