@@ -1,0 +1,512 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model to store information about system users
+model User {
+  id              Int       @id @default(autoincrement()) // Unique identifier for each user
+  username        String    // Username for login
+  dateOfBirth     DateTime  // User's date of birth
+  emailAddress    String    @unique // Unique email address for each user
+  password        String    // User's password (hashed)
+  roles           Role      // Role of the user (Admin, Cashier, Pharmacist)
+  emailVerifiedAt DateTime? // Timestamp when the email was verified
+  createdAt       DateTime  @default(now()) // Timestamp when the user was created
+  updatedAt       DateTime  @updatedAt // Timestamp when the user was last updated
+  Sales           Sale[]    // Relationship to the Sale model
+  Demands         Demand[]  // Relationship to the Demand model
+  batchTransfers    BatchTransfer[]
+  homeUseProducts   HomeUseProduct[]
+}
+
+// Enum for user roles
+enum Role {
+  Admin      @map("admin") // Administrator with full access
+  Cashier    @map("cashier") // Cashier with limited access
+  Pharmacist @map("pharmacist") // Pharmacist with specific access
+}
+
+// Inventory model to store information about products in stock
+model Inventory {
+  id             Int            @id @default(autoincrement())
+  name           String
+  formula        String?
+  type           Type
+  category       Category       @relation(fields: [categoryId], references: [id])
+  categoryId     Int
+  rackLocation   String
+  wholeSalePrice Float
+  retailPrice    Float
+  expiryDate     DateTime?
+  stock          Int
+  value          Float          @default(0) // Total value of inventory
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  supplier       Supplier       @relation(fields: [supplierId], references: [id])
+  supplierId     Int
+  ReturnedItem   ReturnedItem[]
+  diseases       MedicineDisease[]
+  genericName    String?
+  brandName      String?
+  manufacturer   String?
+  dosageForm     String?        // Form of the medicine (Tablet, Drops, Syrup, Capsule, etc.)
+  strength       String?        // Strength/dosage (500mg, 1000IU, etc.)
+  variantForm    String?        // Variant form (Tablet, Drops, Syrup, etc.) - for products with multiple forms
+  packagingUnit  String?        // Packaging unit (Individual, Strip, Bottle, Box, etc.)
+  unitsPerPackage Int?          @default(1) // Number of units per package (e.g., 10 tablets per strip)
+  baseProductId  Int?           // Reference to base product if this is a variant
+  baseProduct    Inventory?      @relation("ProductVariants", fields: [baseProductId], references: [id])
+  variants       Inventory[]     @relation("ProductVariants") // Variants of this product
+  indications    String[]
+  contraindications String[]
+  sideEffects    String[]
+  storage        String?
+  stockBatches   StockBatch[]
+  homeUseProducts HomeUseProduct[]
+  alerts         StockAlert[]
+  sales          Sale[]
+  demands        Demand[]
+}
+
+// Supplier model to store information about suppliers
+model Supplier {
+  id            Int             @id @default(autoincrement()) // Unique identifier for each supplier
+  supplierName  String          // Name of the supplier
+  number        String          // Contact number of the supplier
+  companyName   String          // Company name of the supplier
+  address       String          // Address of the supplier
+  createdAt     DateTime        @default(now()) // Timestamp when the supplier was created
+  updatedAt     DateTime        @updatedAt // Timestamp when the supplier was last updated
+  Inventory     Inventory[]     // Relationship to the Inventory model
+  Bill          Bill[]          // Relationship to the Bill model
+  PurchaseOrder PurchaseOrder[] // Relationship to the PurchaseOrder model
+}
+
+// Bill model to store information about bills from suppliers
+model Bill {
+  id         Int      @id @default(autoincrement()) // Unique identifier for each bill
+  name       String   // Name of the product
+  formula    String?  // Formula or composition of the product
+  type       Type?    // Type/category of the product
+  supplier   Supplier @relation(fields: [supplierId], references: [id]) // Relationship to the Supplier model
+  supplierId Int      // Foreign key for the supplier
+  quantity   Int      // Quantity of the product in the bill
+  total      Int      // Total amount of the bill
+  createdAt  DateTime @default(now()) // Timestamp when the bill was created
+  updatedAt  DateTime @updatedAt // Timestamp when the bill was last updated
+}
+
+// Sale model to store information about sales transactions
+model Sale {
+  id         Int       @id @default(autoincrement()) // Unique identifier for each sale
+  name       String    // Name of the product sold
+  formula    String?   // Formula or composition of the product
+  type       Type?     // Type/category of the product
+  quantity   Int       // Quantity of the product sold
+  price      Float     // Price of the product sold
+  totalAmount Float    // Total amount of the sale
+  discount   Float     @default(0) // Discount applied to the sale
+  replace    Boolean   // Whether the product was replaced
+  createdAt  DateTime  @default(now()) // Timestamp when the sale was created
+  updatedAt  DateTime  @updatedAt // Timestamp when the sale was last updated
+  user       User      @relation(fields: [userId], references: [id]) // Relationship to the User model
+  userId     Int       // Foreign key for the user
+  customer   Customer? @relation(fields: [customerId], references: [id]) // Optional relationship to the Customer model
+  customerId Int?      // Optional foreign key for the customer
+  invoice    Invoice   @relation(fields: [invoiceId], references: [id]) // Relationship to the Invoice model
+  invoiceId  Int       // Foreign key for the invoice
+  returns    Return[]  // Relationship to the Return model
+  stockBatch StockBatch? @relation(fields: [stockBatchId], references: [id])
+  stockBatchId Int?
+  inventory  Inventory @relation(fields: [inventoryId], references: [id])
+  inventoryId Int
+}
+
+// Demand model to store information about product demand
+model Demand {
+  id        Int      @id @default(autoincrement()) // Unique identifier for each demand record
+  name      String   // Name of the product in demand
+  formula   String?  // Formula or composition of the product
+  type      Type?    // Type/category of the product
+  quantity  Int      // Quantity of the product in demand
+  bought    Boolean  @default(false) // Whether the product has been bought
+  createdAt DateTime @default(now()) // Timestamp when the demand record was created
+  updatedAt DateTime @updatedAt // Timestamp when the demand record was last updated
+  user      User     @relation(fields: [userId], references: [id]) // Relationship to the User model
+  userId    Int      // Foreign key for the user
+  inventory Inventory @relation(fields: [inventoryId], references: [id])
+  inventoryId Int
+  customer  Customer? @relation(fields: [customerId], references: [id])
+  customerId Int?
+}
+
+// Category model to store information about product categories
+model Category {
+  id          Int         @id @default(autoincrement()) // Unique identifier for each category
+  name        String      // Name of the category
+  description String?     // Optional description of the category
+  parentId    Int?        // Parent category ID for hierarchical structure
+  parent      Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[]  @relation("CategoryHierarchy") // Child categories
+  createdAt   DateTime    @default(now()) // Timestamp when the category was created
+  updatedAt   DateTime    @updatedAt // Timestamp when the category was last updated
+  Inventory   Inventory[] // Relationship to the Inventory model
+}
+
+// PurchaseOrder model to store information about purchase orders from suppliers
+model PurchaseOrder {
+  id          Int         @id @default(autoincrement()) // Unique identifier for each purchase order
+  supplier    Supplier    @relation(fields: [supplierId], references: [id]) // Relationship to the Supplier model
+  supplierId  Int         // Foreign key for the supplier
+  orderDate   DateTime    // Date when the order was placed
+  status      OrderStatus // Status of the order (Pending, Shipped, Delivered, Cancelled)
+  totalAmount Float       // Total amount of the purchase order
+  createdAt   DateTime    @default(now()) // Timestamp when the purchase order was created
+  updatedAt   DateTime    @updatedAt // Timestamp when the purchase order was last updated
+}
+
+// Customer model to store information about wholesale customers
+model Customer {
+  id              Int          @id @default(autoincrement()) // Unique identifier for each customer
+  name            String       // Name of the customer
+  email           String       @unique // Unique email address for each customer
+  phoneNumber     String       // Contact number of the customer
+  address         String       // Address of the customer
+  customerType    CustomerType // Type of the customer (Wholesale)
+  defaultDiscount Float?       // Default discount for the customer
+  createdAt       DateTime     @default(now()) // Timestamp when the customer was created
+  updatedAt       DateTime     @updatedAt // Timestamp when the customer was last updated
+  Sales           Sale[]       // Relationship to the Sale model
+  Invoice         Invoice[]    // Relationship to the Invoice model
+  demands         Demand[]     // Relationship to the Demand model
+}
+
+// Invoice model to store information about sales invoices
+model Invoice {
+  id          Int       @id @default(autoincrement()) // Unique identifier for each invoice
+  number      String    // Invoice number
+  date        DateTime  // Date of the invoice
+  totalAmount Float     // Total amount of the invoice
+  discount    Float     @default(0) // Discount applied to the invoice
+  status      String    @default("pending") // Status of the invoice
+  paymentMethod String? @default("CASH") // Payment method: CASH, CREDIT, PARTIAL
+  paidAmount  Float     @default(0) // Amount paid (for cash or partial payments)
+  dueAmount   Float     @default(0) // Amount due (for credit/loan sales)
+  createdAt   DateTime  @default(now()) // Timestamp when the invoice was created
+  updatedAt   DateTime  @updatedAt // Timestamp when the invoice was last updated
+  customer    Customer  @relation(fields: [customerId], references: [id]) // Relationship to the Customer model
+  customerId  Int       // Foreign key for the customer
+  Sales       Sale[]    // Relationship to the Sale model
+  Returns     Return[]  // Relationship to the Return model
+}
+
+// Return model to store information about returned items
+model Return {
+  id            Int            @id @default(autoincrement()) // Unique identifier for each return
+  sale          Sale           @relation(fields: [saleId], references: [id]) // Relationship to the Sale model
+  saleId        Int            // Foreign key for the sale
+  returnedItems ReturnedItem[] // Relationship to the ReturnedItem model
+  reason        String         // Reason for the return
+  status        String         @default("pending") // Status of the return
+  totalRefundAmount Float      @default(0) // Total refund amount
+  createdAt     DateTime       @default(now()) // Timestamp when the return was created
+  updatedAt     DateTime       @updatedAt // Timestamp when the return was last updated
+  invoice       Invoice        @relation(fields: [invoiceId], references: [id])
+  invoiceId     Int
+}
+
+// ReturnedItem model to store information about items returned in a return
+model ReturnedItem {
+  id          Int       @id @default(autoincrement()) // Unique identifier for each returned item
+  inventory   Inventory @relation(fields: [inventoryId], references: [id]) // Relationship to the Inventory model
+  inventoryId Int       // Foreign key for the inventory
+  quantity    Int       // Quantity of the item returned
+  createdAt   DateTime  @default(now()) // Timestamp when the returned item was created
+  updatedAt   DateTime  @updatedAt // Timestamp when the returned item was last updated
+  Return      Return?   @relation(fields: [returnId], references: [id])
+  returnId    Int?
+}
+
+// Expense model to store information about expenses
+model Expense {
+  id             Int         @id @default(autoincrement())
+  description    String      // Description of the expense
+  amount         Float       // Amount of the expense
+  date           DateTime    // Date when the expense occurred
+  paymentMethod  String?     // Payment method used (e.g., CREDIT_CARD, CASH, BANK_TRANSFER)
+  receiptNumber  String?     // Reference number or receipt number
+  notes          String?     // Additional notes about the expense
+  userId         Int?        // ID of the user recording the expense
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  homeUseProducts HomeUseProduct[] // Relation to home use products
+  expenseType    ExpenseType // Type of expense
+}
+
+// Report model to store information about sales and financial reports
+model Report {
+  id            Int        @id @default(autoincrement()) // Unique identifier for each report
+  reportType    ReportType // Type of the report (Daily, Weekly, Monthly, Annual)
+  startDate     DateTime   // Start date of the report period
+  endDate       DateTime   // End date of the report period
+  totalSales    Float      // Total sales within the report period
+  totalExpenses Float      // Total expenses within the report period
+  profitOrLoss  Float      // Profit or loss calculated as total sales minus total expenses
+  createdAt     DateTime   @default(now()) // Timestamp when the report was created
+  updatedAt     DateTime   @updatedAt // Timestamp when the report was last updated
+}
+
+// Enum for order status
+enum OrderStatus {
+  Pending    @map("pending")    // Order is pending
+  Shipped    @map("shipped")    // Order has been shipped
+  Delivered  @map("delivered")  // Order has been delivered
+  Cancelled  @map("cancelled")  // Order has been cancelled
+}
+
+// Enum for customer types
+enum CustomerType {
+  Wholesale @map("wholesale")  // Wholesale customer
+}
+
+// Enum for product types
+enum Type {
+  Medicine  @map("medicine")   // Medicine product
+  Food      @map("food")       // Food product
+  Cosmetic  @map("cosmetic")   // Cosmetic product
+  Other     @map("other")      // Other product types
+}
+
+// Enum for report types
+enum ReportType {
+  Daily    @map("daily")    // Daily report
+  Weekly   @map("weekly")   // Weekly report
+  Monthly  @map("monthly")  // Monthly report
+  Annual   @map("annual")   // Annual report
+}
+
+enum ReturnReason {
+  DAMAGED
+  DEFECTIVE
+  WRONG_ITEM
+  CUSTOMER_REQUEST
+  EXPIRED
+  OTHER
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSED
+  REFUNDED
+  CANCELLED
+}
+
+model Disease {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  symptoms    String[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  medicines   MedicineDisease[]
+}
+
+model MedicineDisease {
+  id         Int      @id @default(autoincrement())
+  medicine   Inventory @relation(fields: [medicineId], references: [id])
+  medicineId Int
+  disease    Disease  @relation(fields: [diseaseId], references: [id])
+  diseaseId  Int
+  priority   Int      @default(1) // Priority of medicine for this disease (1 being highest)
+  notes      String?  // Additional notes about medicine-disease relationship
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([medicineId, diseaseId])
+}
+
+model StockBatch {
+  id          Int       @id @default(autoincrement())
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  inventoryId Int
+  batchNumber String
+  quantity    Int
+  expiryDate  DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  sales       Sale[]    // Relation to track which sales used this batch
+  sourceTransfers    BatchTransfer[] @relation("SourceBatch")
+  targetTransfers    BatchTransfer[] @relation("TargetBatch")
+  homeUseProducts    HomeUseProduct[]
+  alerts            StockAlert[]
+
+  @@unique([inventoryId, batchNumber])
+}
+
+model BatchTransfer {
+  id            Int       @id @default(autoincrement())
+  sourceBatch   StockBatch @relation("SourceBatch", fields: [sourceBatchId], references: [id])
+  sourceBatchId Int
+  targetBatch   StockBatch @relation("TargetBatch", fields: [targetBatchId], references: [id])
+  targetBatchId Int
+  quantity      Int
+  reason        String
+  transferredBy User      @relation(fields: [userId], references: [id])
+  userId        Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model HomeUseProduct {
+  id          Int       @id @default(autoincrement())
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  inventoryId Int
+  batch       StockBatch @relation(fields: [batchId], references: [id])
+  batchId     Int
+  quantity    Int
+  takenBy     User      @relation(fields: [userId], references: [id])
+  userId      Int
+  purpose     String
+  takenAt     DateTime  @default(now())
+  returnedAt  DateTime?
+  status      HomeUseStatus
+  costPrice   Float     // Cost price of the product
+  retailPrice Float     // Retail price of the product
+  isPaid      Boolean   @default(false) // Whether the user has paid for the product
+  paymentDate DateTime? // When the payment was made
+  notes       String?   // Additional notes about the home use
+  expense     Expense?  @relation(fields: [expenseId], references: [id])
+  expenseId   Int?      // Link to expense record if treated as business expense
+}
+
+model StockAlert {
+  id          Int       @id @default(autoincrement())
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  inventoryId Int
+  batch       StockBatch? @relation(fields: [batchId], references: [id])
+  batchId     Int?
+  type        AlertType
+  threshold   Int
+  message     String
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum HomeUseStatus {
+  TAKEN
+  RETURNED
+  CONSUMED
+}
+
+enum AlertType {
+  EXPIRY
+  LOW_STOCK
+  HIGH_STOCK
+  BATCH_EXPIRY
+}
+
+enum ExpenseType {
+  HOME_USE_PRODUCT
+  OPERATIONAL
+  MAINTENANCE
+  OTHER
+}
+
+// ErrorLog model to store application errors for debugging and monitoring
+model ErrorLog {
+  id            Int       @id @default(autoincrement())
+  message       String    // Error message
+  stack         String?   // Error stack trace
+  statusCode    Int?      // HTTP status code
+  path          String?   // Request path
+  method        String?   // HTTP method
+  userId        Int?      // User ID if authenticated
+  userEmail     String?   // User email if available
+  ipAddress     String?   // Client IP address
+  userAgent     String?   // User agent string
+  requestBody   String?   // Request body (JSON string)
+  queryParams   String?   // Query parameters (JSON string)
+  errorType     String?   // Error type/class name
+  severity      ErrorSeverity @default(MEDIUM) // Error severity level
+  resolved      Boolean   @default(false) // Whether error has been resolved
+  resolvedAt    DateTime? // When error was resolved
+  resolvedBy    Int?      // User ID who resolved the error
+  notes         String?   // Additional notes about the error
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([createdAt])
+  @@index([severity])
+  @@index([resolved])
+  @@index([userId])
+}
+
+enum ErrorSeverity {
+  LOW      @map("low")      // Low severity - warnings, minor issues
+  MEDIUM   @map("medium")   // Medium severity - standard errors
+  HIGH     @map("high")     // High severity - critical errors
+  CRITICAL @map("critical") // Critical severity - system failures
+}
+
+// AuditLog model to store audit trail for compliance and governance
+model AuditLog {
+  id            Int       @id @default(autoincrement())
+  action        AuditAction // Action type (CREATE, UPDATE, DELETE, VIEW)
+  entityType    String    // Entity type (Inventory, Sale, Invoice, etc.)
+  entityId      Int?      // Entity ID
+  actorId       Int?      // User ID who performed the action
+  actorEmail    String?   // User email for identification
+  actorUsername String?   // Username for identification
+  beforeSnapshot Json?   // Entity state before action (for updates/deletes)
+  afterSnapshot  Json?    // Entity state after action (for creates/updates)
+  ipAddress     String?   // Client IP address
+  userAgent     String?   // User agent string
+  requestPath   String?   // Request path
+  requestMethod String?   // HTTP method
+  description   String?   // Optional description of the action
+  metadata      Json?     // Additional metadata
+  createdAt     DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([actorId])
+  @@index([actorEmail])
+}
+
+enum AuditAction {
+  CREATE  @map("create")  // Create operation
+  UPDATE  @map("update")  // Update operation
+  DELETE  @map("delete")  // Delete operation
+  VIEW    @map("view")    // View/Read operation
+  LOGIN   @map("login")   // User login
+  LOGOUT  @map("logout")  // User logout
+  EXPORT  @map("export")  // Data export
+  IMPORT  @map("import")  // Data import
+}
+
+// Settings model to store application-wide settings
+model Settings {
+  id            Int       @id @default(autoincrement())
+  key           String    @unique // Setting key (e.g., 'pharmacy_name', 'pharmacy_address', etc.)
+  value         String    // Setting value
+  description   String?   // Optional description of the setting
+  category      String?   @default("general") // Category for grouping settings
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([key])
+  @@index([category])
+}
